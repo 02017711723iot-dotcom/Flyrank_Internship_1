@@ -52,7 +52,7 @@ Fresh clone: `pip install -r requirements.txt`, then run `work/notebooks/capston
 
 ## 9. Acknowledgments & data credit
 
-Built on the FlyRank ML Internship dataset — linking to https://flyrank.ai.
+[Built on the FlyRank ML Internship dataset](https://flyrank.ai)
 
 ---
 
