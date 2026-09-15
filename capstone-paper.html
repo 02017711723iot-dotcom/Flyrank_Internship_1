@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking Content for Refresh Review: A Leakage-Aware Evaluation | FlyRank ML Internship Capstone</title>
+<meta name="description" content="Can observable content and search-performance signals rank pages for human review? A client-holdout evaluation of a decision tree against a simple stale-plus-visible rule.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F4EE;
+    --paper-raised:#EDEBE1;
+    --ink:#161F1B;
+    --ink-soft:#3F493F;
+    --ink-faint:#6E7568;
+    --rule:#D6D1BF;
+    --gold:#B4872A;
+    --gold-dim:#8C6A22;
+    --rust:#8A4234;
+    --teal:#2F5C4C;
+    --paper-card:#FBFAF6;
+    --max:700px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--gold-dim);text-decoration-thickness:1px;text-underline-offset:2px;}
+  a:hover{color:var(--rust);}
+
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
+
+  header.masthead{
+    padding:72px 24px 56px;
+    border-bottom:1px solid var(--rule);
+  }
+  .masthead-inner{max-width:var(--max);margin:0 auto;}
+  .kicker{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--ink-faint);
+    margin:0 0 22px;
+    letter-spacing:0.02em;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:2.55rem;
+    line-height:1.14;
+    letter-spacing:-0.01em;
+    margin:0 0 20px;
+    color:var(--ink);
+  }
+  .dek{
+    font-size:1.15rem;
+    color:var(--ink-soft);
+    max-width:56ch;
+    margin:0 0 28px;
+    font-weight:400;
+  }
+  .byline{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    color:var(--ink-faint);
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px 18px;
+  }
+
+  main{padding:56px 0 40px;}
+  section{margin-bottom:64px;}
+  section:last-of-type{margin-bottom:0;}
+
+  h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:1.55rem;
+    color:var(--ink);
+    margin:0 0 22px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--rule);
+  }
+  h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:1.02rem;
+    color:var(--ink);
+    margin:32px 0 12px;
+  }
+  p{margin:0 0 18px;color:var(--ink);}
+  section p:last-child{margin-bottom:0;}
+  ul, ol{margin:0 0 18px; padding-left:1.35em;}
+  li{margin-bottom:8px;}
+  li:last-child{margin-bottom:0;}
+  strong{font-weight:600;}
+  code, .mono{font-family:'IBM Plex Mono', monospace; font-size:0.9em;}
+
+  .abstract{
+    background:var(--paper-card);
+    border:1px solid var(--rule);
+    border-radius:2px;
+    padding:28px 30px;
+  }
+  .abstract p{font-size:1.01rem;color:var(--ink-soft);}
+
+  /* Precision@50 bar comparison */
+  .compare{margin:28px 0 8px;}
+  .bar-row{margin-bottom:22px;}
+  .bar-label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    margin-bottom:7px;
+    color:var(--ink-soft);
+  }
+  .bar-label .val{font-size:1.05rem; font-weight:500; color:var(--ink);}
+  .bar-track{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+    height:15px;
+    border-radius:1px;
+    overflow:hidden;
+  }
+  .bar-fill{height:100%;}
+  .bar-fill.model{background:var(--teal);}
+  .bar-fill.baseline{background:var(--gold);}
+  .base-rate-mark{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--ink-faint);
+    margin-top:10px;
+  }
+  .delta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--rust);
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px dashed var(--rule);
+  }
+
+  /* feature importance bars */
+  .feat-row{
+    display:grid;
+    grid-template-columns:150px 1fr 52px;
+    align-items:center;
+    gap:12px;
+    margin-bottom:10px;
+    font-size:14.5px;
+  }
+  .feat-name{font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); font-size:13px;}
+  .feat-track{background:var(--paper-raised); border:1px solid var(--rule); height:10px;}
+  .feat-fill{height:100%; background:var(--ink-soft);}
+  .feat-val{font-family:'IBM Plex Mono', monospace; font-size:13px; text-align:right; color:var(--ink-faint);}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:20px 0;
+    font-size:15px;
+  }
+  th, td{
+    text-align:left;
+    padding:10px 14px;
+    border-bottom:1px solid var(--rule);
+  }
+  th{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:500;
+    font-size:12.5px;
+    color:var(--ink-faint);
+    letter-spacing:0.01em;
+  }
+  td.num, th.num{text-align:right; font-family:'IBM Plex Mono', monospace;}
+
+  .callout{
+    background:var(--paper-card);
+    border-left:3px solid var(--rust);
+    padding:16px 20px;
+    margin:22px 0;
+    font-size:15.5px;
+    color:var(--ink-soft);
+  }
+  .callout strong{color:var(--ink);}
+
+  .note{
+    background:var(--paper-raised);
+    border:1px solid var(--rule);
+    padding:16px 20px;
+    margin:22px 0;
+    font-size:14.5px;
+    color:var(--ink-soft);
+  }
+
+  ol.playbook{
+    counter-reset:step;
+    list-style:none;
+    padding-left:0;
+  }
+  ol.playbook li{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    gap:14px;
+    padding:14px 0;
+    border-bottom:1px solid var(--rule);
+    margin-bottom:0;
+  }
+  ol.playbook li:last-child{border-bottom:none;}
+  ol.playbook li::before{
+    counter-increment:step;
+    content:counter(step);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    color:var(--gold-dim);
+    border:1px solid var(--rule);
+    width:26px;
+    height:26px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+  }
+  ol.playbook .pb-body{min-width:0; display:block;}
+  ol.playbook .pb-title{display:block; font-weight:600; margin-bottom:2px;}
+  ol.playbook .pb-desc{display:block; color:var(--ink-soft); font-size:15px;}
+
+  footer{
+    border-top:1px solid var(--rule);
+    padding:36px 0 64px;
+    font-size:14px;
+    color:var(--ink-faint);
+  }
+  footer .wrap p{margin:0 0 8px;}
+
+  @media (max-width:600px){
+    header.masthead{padding:48px 20px 40px;}
+    h1{font-size:1.9rem;}
+    main{padding:40px 0 24px;}
+    .feat-row{grid-template-columns:100px 1fr 44px; font-size:13px;}
+    .abstract{padding:22px 20px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="kicker">FlyRank ML Internship — Capstone, Content Refresh Prioritization Lane</p>
+    <h1>Ranking content for refresh review: a leakage-aware evaluation</h1>
+    <p class="dek">A decision tree scored pages by their likelihood of observed decline. On a client-holdout test, a simpler hand-written rule ranked the top 50 more precisely.</p>
+    <div class="byline">
+      <span>Krish</span>
+      <span>Content Opportunity Scoring</span>
+      <span><a href="https://github.com/02017711723iot-dotcom/Flyrank_Internship_1">Repository →</a></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <div class="abstract">
+      <p>This project asks whether observable content and search-performance signals can rank pages for human review when prioritizing content-refresh work. Using an anonymized slice of FlyRank content-performance data — 30,000 content items across 32 clients — a shallow decision tree was trained on six features (content age, days since last update, 90-day impressions, average search position, click-through rate, and word count) to score each page's likelihood of observed decline, then evaluated with a client-level holdout split that shares no client between training and test data. On that holdout, the model reached a Precision@50 of 0.56, while a simple stale-plus-visible rule — flagging pages untouched for 180 or more days with meaningful visibility — reached 0.60, a four-point gap the model did not close. The honest reading is that the transparent rule held the edge on this evaluation, and the contribution here is a leakage-aware benchmark and a decision-support ranking tool rather than a demonstrated improvement over a simpler method. The output is intended as a ranked queue for human content review, not an automatic refresh system.</p>
+    </div>
+  </section>
+
+  <section id="problem">
+    <h2>1. Problem</h2>
+    <p>Content that ranks in Google search results can quietly decay — rankings slip, clicks fall — and content teams often notice only after the damage compounds. With thousands of pages under management, the practical question is not whether a page has declined, but which page a human should look at first. That is a ranking problem: the cost of a wrong call is not a missed page, it is misallocated editorial attention.</p>
+    <p>This capstone frames content-refresh prioritization as exactly that ranking problem. The unit of analysis is a single content page. The output is a ranked review score and priority order, not a refresh decision. A human reviewer works down the ranked queue, checking page importance, search intent, content quality, and other plausible explanations before deciding whether to refresh, monitor, investigate further, or take no action. A false positive wastes review time on a page that did not need it; a false negative delays attention to a page that did.</p>
+  </section>
+
+  <section id="data">
+    <h2>2. Data</h2>
+    <p>The analysis uses the anonymized starter dataset shipped with the internship repository, <code>data/raw/content_refresh_anonymized.csv</code>: 30,000 content rows across 44 columns and 32 pseudonymous clients. Each row is one content item with content metadata, observed search and engagement metrics, and age/freshness fields. The dataset contains no client names, domains, URLs, titles, or raw search queries — only hashed <code>content_id</code> and <code>client_id</code> values, used for grouping, never as features.</p>
+    <p>The prediction target, <code>is_declining_label</code>, is set to 1 where the dataset's own <code>trend_direction</code> field reads "down," and 0 otherwise. Of the 30,000 rows, 16,262 (54.2%) carry a declining trend, against 5,962 stable, 4,388 up, 2,236 new, and 1,152 flat. That 54.2% is the base rate this analysis measures itself against — a Precision@50 near it means the ranking is close to a random draw from the eligible pool.</p>
+    <p>After dropping rows with missing values in the six model features or the grouping/label columns, 22,301 rows remain as the modeling population. <code>trend_direction</code>, its companion <code>trend_pct</code>, and the derived <code>is_declining_label</code> itself are excluded from the feature set throughout, since they are the label or label-adjacent — using them would leak the answer into the ranking.</p>
+  </section>
+
+  <section id="methodology">
+    <h2>3. Methodology</h2>
+
+    <h3>Baseline: the stale-plus-visible rule</h3>
+    <p>Before training anything, the analysis compares against a transparent, hand-written rule carried over from the earlier baseline notebook: a page qualifies if it has gone at least 180 days without an update <em>and</em> has at least 500 impressions in the trailing 90 days. Qualifying pages are scored by their impression count; everything else scores zero. This mirrors how a content team would triage by hand — old and still-visible — and it is the bar the learned model has to clear.</p>
+    <p>The rule is deliberately narrow. Across the full 30,000-row dataset, only 174 pages meet the 180-day staleness threshold, and only 17 pages meet both conditions at once. That scarcity matters for how the baseline behaves on any one test split, and it is discussed further in Section 5.</p>
+
+    <h3>Model</h3>
+    <p>The model is a shallow <code>DecisionTreeClassifier</code> (<code>max_depth=3</code>, <code>class_weight="balanced"</code>, <code>random_state=42</code>) trained on six features: <code>content_age_days</code>, <code>days_since_last_update</code>, <code>impressions_90d</code>, <code>avg_position</code>, <code>ctr</code>, and <code>word_count</code>. It outputs a probability that a page belongs to the observed-declining class, which is used purely to rank pages for review — not as an automatic classification of any single page.</p>
+
+    <h3>Validation</h3>
+    <p>The evaluation splits the 22,301-row modeling population by <strong>client</strong>, not by row: a <code>GroupShuffleSplit</code> (20% test, <code>random_state=42</code>) keeps every row from a given client entirely in training or entirely in test, so the model can never see a client's pages during training and then get credit for recognizing that client at test time. The resulting split holds out 5,078 rows across 7 clients for testing, against 17,223 rows across 25 clients for training, with zero client overlap between the two.</p>
+    <p>This client-holdout design replaced an earlier row-level, stratified split used in prior weeks of the internship, which mixed a client's pages across both training and test sets and produced a visibly inflated Precision@50 in the high 0.60s. Moving to a grouped, client-level split was the leakage fix; the gap between the two split strategies is itself evidence of how much of the earlier number was the model recognizing clients it had already seen, rather than a genuinely transferable ranking signal.</p>
+  </section>
+
+  <section id="results">
+    <h2>4. Results</h2>
+    <p>The reported metric is <strong>Precision@50</strong>: of the 50 highest-ranked content items, the share actually observed as declining. This matches the intended use — a small, prioritized queue for human review — better than a metric that scores every page equally.</p>
+
+    <div class="compare">
+      <div class="bar-row">
+        <div class="bar-label"><span>Decision Tree ML</span><span class="val">0.56</span></div>
+        <div class="bar-track"><div class="bar-fill model" style="width:56%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>Stale + Visible Baseline</span><span class="val">0.60</span></div>
+        <div class="bar-track"><div class="bar-fill baseline" style="width:60%"></div></div>
+      </div>
+    </div>
+    <p class="delta">Difference (model − baseline): −0.04. The decision tree did not outperform the baseline on this client-holdout test.</p>
+
+    <h3>Reading this against the base rate</h3>
+    <p>The dataset's overall decline rate is 54.2%. A model's Precision@50 of 0.56 is only two points above that figure — close enough that, on its own, it does not demonstrate strong discrimination in the top of the ranked list. The baseline's 0.60 is a more meaningful lift over the base rate, but see the caveat below before treating that as a settled win.</p>
+
+    <div class="callout">
+      <strong>A caveat on the baseline number.</strong> Because only 17 pages in the entire 30,000-row dataset meet both staleness conditions, the stale-plus-visible rule assigned a <em>non-zero</em> score to zero pages in this particular 5,078-row test split — none of the 7 held-out test clients happened to contain a qualifying page. With every baseline score tied at zero, the "top 50 by baseline score" is effectively an arbitrary ordering among tied rows, not a ranked list built on real signal. The baseline's 0.60 should be read as a property of tie-breaking on this split, not as proof the hand-written rule is reliably the stronger ranker — a different client split could easily move that number. This is a limitation of the evaluation, not a hidden strength of the rule.
+    </div>
+
+    <h3>Feature importance</h3>
+    <p>Within the fitted decision tree, importance concentrated in two features:</p>
+    <div class="compare">
+      <div class="feat-row"><span class="feat-name">impressions_90d</span><div class="feat-track"><div class="feat-fill" style="width:100%"></div></div><span class="feat-val">0.549</span></div>
+      <div class="feat-row"><span class="feat-name">content_age_days</span><div class="feat-track"><div class="feat-fill" style="width:46%"></div></div><span class="feat-val">0.255</span></div>
+      <div class="feat-row"><span class="feat-name">avg_position</span><div class="feat-track"><div class="feat-fill" style="width:21%"></div></div><span class="feat-val">0.114</span></div>
+      <div class="feat-row"><span class="feat-name">ctr</span><div class="feat-track"><div class="feat-fill" style="width:15%"></div></div><span class="feat-val">0.082</span></div>
+      <div class="feat-row"><span class="feat-name">days_since_last_update</span><div class="feat-track"><div class="feat-fill" style="width:0%"></div></div><span class="feat-val">0.000</span></div>
+      <div class="feat-row"><span class="feat-name">word_count</span><div class="feat-track"><div class="feat-fill" style="width:0%"></div></div><span class="feat-val">0.000</span></div>
+    </div>
+    <p>These are model feature-importance values, not causal weights. They describe how the fitted tree used the six inputs to split its training data — not that impressions cause decline, or that a page's word count is irrelevant to its performance. Notably, the tree leaned almost entirely on visibility and age, and split on <code>days_since_last_update</code> not at all, despite that field being central to the baseline rule it was compared against.</p>
+  </section>
+
+  <section id="limitations">
+    <h2>5. Limitations &amp; honest framing</h2>
+    <ul>
+      <li>Measured Precision@50 for the decision tree was 0.56 on this client-holdout test; the stale-plus-visible baseline measured 0.60 on the same split. The model did not outperform the baseline here.</li>
+      <li>The baseline's score is itself fragile on this split: only 17 of 30,000 pages in the full dataset meet its qualifying rule, and none fell in the 7 held-out test clients, so its top-50 ordering is a tie-break artifact rather than a differentiated ranking. Section 4 discusses this in detail.</li>
+      <li>The overall base rate for the declining label is 54.2%; a Precision@50 of 0.56 sits close enough to that rate that the model's top-of-list discrimination should not be overstated.</li>
+      <li>The dataset is a small, anonymized slice of one internship release. Findings may not generalize to other clients, sites, or future data.</li>
+      <li>The target represents <em>observed</em> declining content — a directional label from historical search data — and does not establish why any individual page declined.</li>
+      <li>Feature importance describes how the fitted tree used its inputs. It is not evidence that any feature causes performance change.</li>
+      <li>This analysis is observational. It does not show that refreshing content improves search performance, and it makes no claim about how Google's ranking algorithm behaves.</li>
+      <li>A high score is a prioritization signal for human review, not an instruction to refresh a page automatically.</li>
+    </ul>
+    <p>Taken together, this positions the model as decision-support for human content review, not an automated content-refresh system — and, on the evidence gathered here, not yet a demonstrated improvement over a much simpler rule.</p>
+  </section>
+
+  <section id="recommendations">
+    <h2>6. Ranked recommendations</h2>
+    <p>The model's output feeds a prioritized queue for human review. A high rank means a page should be looked at sooner — it is not a refresh order. The recommended workflow, in priority order:</p>
+    <ol class="playbook">
+      <li><span class="pb-body"><span class="pb-title">Refresh candidate</span><span class="pb-desc">Detailed human review for pages with the strongest combined signals of decline, aging, and weak performance.</span></span></li>
+      <li><span class="pb-body"><span class="pb-title">Aging content</span><span class="pb-desc">Check older pages for outdated information, freshness, and alignment with current search intent.</span></span></li>
+      <li><span class="pb-body"><span class="pb-title">Low CTR</span><span class="pb-desc">Investigate pages with low click-through rate relative to their impressions and position.</span></span></li>
+      <li><span class="pb-body"><span class="pb-title">Low position</span><span class="pb-desc">Examine pages with weak average position to see whether content, or something else, explains it.</span></span></li>
+      <li><span class="pb-body"><span class="pb-title">Low visibility</span><span class="pb-desc">Look into pages with limited impressions before making any content decision.</span></span></li>
+      <li><span class="pb-body"><span class="pb-title">Review only</span><span class="pb-desc">Continue monitoring where current evidence doesn't yet support a refresh call.</span></span></li>
+    </ol>
+    <p>Before acting on any ranked page, a reviewer should still weigh business importance, search intent, content quality, freshness, topical coverage, technical issues, cannibalization with other pages, alternative explanations for the observed decline, and expected value against effort. The system deliberately does not publish changes, edit titles or metadata, delete or redirect pages, judge content quality, assign business priority, or claim that any refresh will improve search performance — those calls stay with a person.</p>
+  </section>
+
+  <section id="reproducibility">
+    <h2>7. Reproducibility</h2>
+    <p>Every number in this paper traces to <code><a href="https://github.com/02017711723iot-dotcom/Flyrank_Internship_1/blob/main/work/notebooks/capstone.ipynb">work/notebooks/capstone.ipynb</a></code>, run top to bottom against <code>data/raw/content_refresh_anonymized.csv</code>. To reproduce:</p>
+    <ul>
+      <li><strong>Data:</strong> <code>data/raw/content_refresh_anonymized.csv</code> (30,000 rows, 44 columns)</li>
+      <li><strong>Features:</strong> <code>content_age_days</code>, <code>days_since_last_update</code>, <code>impressions_90d</code>, <code>avg_position</code>, <code>ctr</code>, <code>word_count</code></li>
+      <li><strong>Target:</strong> <code>is_declining_label = (trend_direction == "down")</code></li>
+      <li><strong>Model:</strong> <code>DecisionTreeClassifier(max_depth=3, class_weight="balanced", random_state=42)</code></li>
+      <li><strong>Split:</strong> <code>GroupShuffleSplit(test_size=0.20, random_state=42)</code>, grouped by <code>client_id</code></li>
+      <li><strong>Metric:</strong> Precision@50, computed identically for the model score and the baseline score</li>
+      <li><strong>Baseline:</strong> <code>days_since_last_update &gt;= 180 AND impressions_90d &gt;= 500</code>, scored by <code>impressions_90d</code></li>
+    </ul>
+    <div class="note">One open item for a fresh run: the committed notebook does not print the exact declining-label rate within the training and test splits themselves (only the dataset-wide rate is printed). Adding that print statement to Section 3 of the notebook before the next run would close a small gap between what this paper can state about the specific holdout and what it can state about the dataset as a whole.</div>
+    <p>The full 22,301-row ranked review queue (generated by the equivalent pipeline step) is not published in this repository or on this page, in line with the project's data-safety rules — the notebook is the reproducible path to regenerate it from source.</p>
+  </section>
+
+  <section id="credit">
+    <h2>8. Acknowledgments &amp; data credit</h2>
+    <p>Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai">flyrank.ai</a>.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Content Opportunity Scoring · FlyRank ML Internship Capstone</p>
+    <p><a href="https://github.com/02017711723iot-dotcom/Flyrank_Internship_1">Repository</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
